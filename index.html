@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OKIENAK</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+<style>
+* { box-sizing:border-box; margin:0; padding:0; font-family: 'Montserrat', sans-serif; }
+html, body { height:100%; width:100%; background:#f5f0ff; color:#333; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; }
+.container { width:90%; max-width:700px; margin-top:40px; background: #fff; border-radius:20px; padding:2rem; box-shadow: 0 8px 30px rgba(0,0,0,0.2); }
+h1 { text-align:center; color:#5a00b8; margin-bottom:1rem; }
+input, textarea, button { width:100%; border-radius:12px; border:none; outline:none; font-size:1rem; padding:0.8rem; margin-bottom:1rem; }
+input { background:#f1f0ff; }
+textarea { min-height:120px; resize:none; background:#f1f0ff; }
+button { background:#7a00ff; color:#fff; cursor:pointer; font-weight:600; transition:0.3s; }
+button:hover { background:#9b33ff; }
+.hidden { display:none; }
+.note-card { background:#f0e6ff; border-radius:12px; padding:1rem; margin-bottom:1rem; }
+.note-card p { white-space:pre-wrap; word-wrap:break-word; }
+a { color:#7a00ff; text-decoration:underline; }
+footer { text-align:center; margin-top:40px; font-size:0.85rem; color:#888; width:100%; padding:1rem 0; }
+
+.tab { display:flex; margin-bottom:1rem; }
+.tab button { flex:1; margin-right:0.5rem; }
+.tab button:last-child { margin-right:0; }
+.active-tab { background:#7a00ff; color:#fff; }
+
+.link-container { text-align:center; margin-top:0.5rem; }
+</style>
+</head>
+<body>
+
+<div class="container" id="auth-container">
+  <h1>🔑 OKIENAK</h1>
+
+  <div class="tab">
+    <button id="login-tab" class="active-tab">Login</button>
+    <button id="register-tab">Daftar</button>
+  </div>
+
+  <!-- LOGIN -->
+  <div id="login-form">
+    <input id="login-email" type="text" placeholder="Email">
+    <input id="login-password" type="password" placeholder="Password">
+    <button id="login-btn">Masuk</button>
+  </div>
+
+  <!-- REGISTER -->
+  <div id="register-form" class="hidden">
+    <input id="reg-email" type="text" placeholder="Email">
+    <input id="reg-password" type="password" placeholder="Password">
+    <button id="register-btn">Daftar</button>
+  </div>
+</div>
+
+<div class="container hidden" id="note-container">
+  <h1>📝 Catatan Saya</h1>
+  <p>Halo, <span id="user-name"></span></p>
+  <textarea id="note-input" placeholder="Tulis catatan baru..."></textarea>
+  <button id="add-note-btn">Tambah Catatan</button>
+  <div id="notes-list"></div>
+  <button id="logout-btn" style="background:#ff004d;">Keluar</button>
+</div>
+
+<footer>© 2026 OKIENAK </footer>
+
+<script>
+const authContainer = document.getElementById("auth-container");
+const noteContainer = document.getElementById("note-container");
+
+const loginTab = document.getElementById("login-tab");
+const registerTab = document.getElementById("register-tab");
+const loginForm = document.getElementById("login-form");
+const registerForm = document.getElementById("register-form");
+
+const loginEmail = document.getElementById("login-email");
+const loginPassword = document.getElementById("login-password");
+const loginBtn = document.getElementById("login-btn");
+
+const regEmail = document.getElementById("reg-email");
+const regPassword = document.getElementById("reg-password");
+const registerBtn = document.getElementById("register-btn");
+
+const userName = document.getElementById("user-name");
+const noteInput = document.getElementById("note-input");
+const addNoteBtn = document.getElementById("add-note-btn");
+const notesList = document.getElementById("notes-list");
+const logoutBtn = document.getElementById("logout-btn");
+
+// ==== Tab Switching ====
+loginTab.addEventListener("click",()=>{
+  loginTab.classList.add("active-tab");
+  registerTab.classList.remove("active-tab");
+  loginForm.classList.remove("hidden");
+  registerForm.classList.add("hidden");
+});
+registerTab.addEventListener("click",()=>{
+  registerTab.classList.add("active-tab");
+  loginTab.classList.remove("active-tab");
+  registerForm.classList.remove("hidden");
+  loginForm.classList.add("hidden");
+});
+
+// ==== REGISTER ====
+registerBtn.addEventListener("click",()=>{
+  const email = regEmail.value.trim();
+  const pass = regPassword.value.trim();
+  if(!email || !pass) return alert("Isi email & password!");
+  let users = JSON.parse(localStorage.getItem("users")||"{}");
+  if(users[email]) return alert("Email sudah terdaftar!");
+  users[email] = {password:pass, notes:[]};
+  localStorage.setItem("users", JSON.stringify(users));
+  alert("Daftar berhasil! Silakan login.");
+  regEmail.value=""; regPassword.value="";
+  loginTab.click();
+});
+
+// ==== LOGIN ====
+loginBtn.addEventListener("click",()=>{
+  const email = loginEmail.value.trim();
+  const pass = loginPassword.value.trim();
+  let users = JSON.parse(localStorage.getItem("users")||"{}");
+  if(users[email] && users[email].password===pass){
+    localStorage.setItem("loggedIn", email);
+    showNotesPage(email);
+  } else {
+    alert("Email atau password salah!");
+  }
+});
+
+// ==== LOGOUT ====
+logoutBtn.addEventListener("click",()=>{
+  localStorage.removeItem("loggedIn");
+  location.reload();
+});
+
+// ==== SHOW NOTES PAGE ====
+function showNotesPage(email){
+  authContainer.classList.add("hidden");
+  noteContainer.classList.remove("hidden");
+  userName.textContent=email;
+  renderNotes();
+}
+
+// ==== ADD NOTE ====
+addNoteBtn.addEventListener("click",()=>{
+  const text = noteInput.value.trim();
+  if(!text) return alert("Tulis catatan dulu!");
+  const email = localStorage.getItem("loggedIn");
+  let users = JSON.parse(localStorage.getItem("users")||"{}");
+  users[email].notes.push(text);
+  localStorage.setItem("users", JSON.stringify(users));
+  noteInput.value="";
+  renderNotes();
+});
+
+// ==== RENDER NOTES ====
+function renderNotes(){
+  notesList.innerHTML="";
+  const email = localStorage.getItem("loggedIn");
+  let users = JSON.parse(localStorage.getItem("users")||"{}");
+  let notes = users[email].notes;
+  notes.forEach((note,i)=>{
+    const div = document.createElement("div");
+    div.className="note-card";
+    div.innerHTML=`<strong>Catatan ${i+1}:</strong><p>${linkify(note)}</p>
+    <div class="link-container"><a href="?note=${email}-${i}" target="_blank">Share</a></div>`;
+    notesList.appendChild(div);
+  });
+}
+
+// ==== AUTO LOGIN ====
+window.addEventListener("load",()=>{
+  const logged = localStorage.getItem("loggedIn");
+  if(logged) showNotesPage(logged);
+
+  // jika query ?note=email-index tampilkan catatan publik
+  const params = new URLSearchParams(window.location.search);
+  const noteParam = params.get("note");
+  if(noteParam){
+    const [email,index] = noteParam.split("-");
+    let users = JSON.parse(localStorage.getItem("users")||"{}");
+    if(users[email] && users[email].notes[index]){
+      authContainer.classList.add("hidden");
+      noteContainer.classList.remove("hidden");
+      userName.textContent = "Guest";
+      notesList.innerHTML=`<div class="note-card"><p>${linkify(users[email].notes[index])}</p></div>`;
+      noteInput.style.display="none";
+      addNoteBtn.style.display="none";
+      logoutBtn.style.display="none";
+    }
+  }
+});
+
+// ==== LINKIFY ====
+function linkify(text){
+  const urlPattern = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+  return text.replace(urlPattern, '<a href="$1" target="_blank">$1</a>');
+}
+</script>
+
+</body>
+</html>
